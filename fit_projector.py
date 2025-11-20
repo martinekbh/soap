@@ -1,6 +1,5 @@
 import torch
 import torchvision as tv 
-# import quix
 import os
 import argparse
 import torch.nn as nn
@@ -13,14 +12,6 @@ from soap.welford import WelfordChanEstimator
 from synth.dataset import SynthesizedDataSet 
 from types import MethodType
 
-# def get_data(dataset, datafolder, imgproc):
-#     override_extensions=('.jpg',)
-#     proc = (imgproc,)
-#     data = quix.QuixDataset(dataset, datafolder, train=True, override_extensions=override_extensions).map_tuple(*proc)
-#     if dataset in ('Caltech256', 'PascalVOC2012', 'CUB'):
-#         train_data = quix.QuixDataset(dataset, datafolder, train=True, override_extensions=override_extensions).map_tuple(*proc)
-#         data = ConcatDataset([data, train_data])
-#     return data
 
 def get_data(dataset, datafolder, imgproc):
     data = ... # Load Dataset e.g. ImageNet
@@ -155,59 +146,3 @@ if __name__=='__main__':
         patch_indices=patch_indices,
         dump_dir=args.dump_dir,
         soft_responses=args.soft_responses)
-
-
-    # # Fit WCE
-    # wce_file = os.path.join(args.dump_dir, f'{args.backbone}.pth')
-    # if os.path.exists(wce_file):
-    #     cov_data = WelfordChanEstimator.deserialize(wce_file).to(device)
-    # else:
-    #     print("Fitting WelfordChanEstimator")
-    #     cov_data = WelfordChanEstimator.run_extraction(
-    #         model, dataloader, device, embed_dim, 
-    #         num_globals=num_global_tokens,
-    #         patch_indices=patch_indices,
-    #     )
-    #     cov_data.serialize(wce_file)
-
-    # if args.soft_responses:
-    #     responses_synth = os.path.join(args.dump_dir, f"{args.backbone}_agg_patch_softresponses_synth.pth")
-    #     responses_real = os.path.join(args.dump_dir, f"{args.backbone}_agg_patch_softresponses.pth")
-    # else:
-    #     responses_synth = os.path.join(args.dump_dir, f"{args.backbone}_agg_patch_responses_synth.pth")
-    #     responses_real = os.path.join(args.dump_dir, f"{args.backbone}_agg_patch_responses.pth")
-    
-    # if not os.path.exists(responses_synth):
-    #     # Aggregated responses for synth data
-    #     print("Calculating aggregates response for synth data")
-    #     cov_data.get_aggregated_patch_responses(
-    #         model, dataloader_synth, device, imgsize, patch_size, embed_dim,
-    #         responses_synth,
-    #         num_globals=num_global_tokens,
-    #         patch_indices=patch_indices,
-    #         binary=(not args.soft_responses)
-    #     )
-
-    # if not os.path.exists(responses_real):
-    #     # Aggregated responses for real data
-    #     print("Calculating aggregates response for real data")
-    #     cov_data.get_aggregated_patch_responses(
-    #         model, dataloader, device, imgsize, patch_size, embed_dim,
-    #         responses_real,
-    #         num_globals=num_global_tokens,
-    #         patch_indices=patch_indices,
-    #         binary=(not args.soft_responses)
-    #     )
-
-    # # Calculate projection
-    # projector = SemanticInvarianceProjector.from_precomputed(
-    #     responses_real,
-    #     responses_synth,
-    #     wce_file
-    # )
-
-    # if args.soft_responses:
-    #     projector_file = os.path.join(args.dump_dir, f"{args.backbone}_projector_from_softresponses.pth")
-    # else:
-    #     projector_file = os.path.join(args.dump_dir, f"{args.backbone}_projector.pth")
-    # projector.serialize(projector_file)

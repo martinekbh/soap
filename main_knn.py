@@ -10,8 +10,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from torch.utils.data import SequentialSampler
 
-from soap.soap import SemanticInvarianceProjector
-from soap.welford import WelfordChanEstimator
+from soap import SOAP, WelfordChanEstimator
 from get_models import *
 from main_salient import none_or_float, none_or_int
 from torch import Tensor
@@ -216,16 +215,16 @@ def main():
     # Get projector
     if args.suppress_pca_components is not None:
         wce = WelfordChanEstimator.deserialize(os.path.join(args.checkpoint_folder, f"{args.backbone}_cov.pth")).to(device)
-        project = SemanticInvarianceProjector.manual_truncation(wce, args.suppress_pca_components)
+        project = SOAP.manual_truncation(wce, args.suppress_pca_components)
     elif args.semantic_invariance_projector:
-        project = SemanticInvarianceProjector.from_modelname(
+        project = SOAP.from_modelname(
             args.backbone, args.checkpoint_folder, alpha=args.gamma, mu=args.mu, tau=args.tau,
             score_version=args.score_version
         ).to(device)
     else:
         project = None
 
-    if isinstance(project, SemanticInvarianceProjector):
+    if isinstance(project, SOAP):
         if args.avg_local_embs:
             def forward(self, x):
                 return (x @ self.projector.mT).mT

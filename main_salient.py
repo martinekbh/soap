@@ -10,8 +10,7 @@ import numpy as np
 import torchvision as tv
 from functools import partial
 
-from soap.soap import SemanticInvarianceProjector
-from soap.welford import WelfordChanEstimator
+from soap import SOAP, WelfordChanEstimator
 from get_models import *
 from salient.bilateral import *
 from salient.ncut import *
@@ -83,7 +82,7 @@ if __name__=='__main__':
 
     # Semantic invariance projector from SI scores
     if args.semantic_invariance_projector:
-        project = SemanticInvarianceProjector.from_modelname(
+        project = SOAP.from_modelname(
             args.backbone, args.checkpoint_folder, alpha=args.gamma, mu=args.mu, tau=args.tau,
             score_version=args.score_version
             ).cuda()
@@ -91,7 +90,7 @@ if __name__=='__main__':
     # Projector from manual selection of principal components to suppress
     wce = WelfordChanEstimator.deserialize(os.path.join(args.checkpoint_folder, f"{args.backbone}_cov.pth")).cuda()
     if args.suppress_pca_components is not None:
-        project = SemanticInvarianceProjector.manual_truncation(wce, args.suppress_pca_components)
+        project = SOAP.manual_truncation(wce, args.suppress_pca_components)
 
     # Salient guide (optional)
     if args.pca_guide_dim is not None:

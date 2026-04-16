@@ -135,7 +135,12 @@ def truncated_invariance_projector(
         return I - V @ V.mT
 
 
-class SemanticInvarianceProjector(nn.Module):
+class SOAP(nn.Module):
+    """Semantically Orthogonal Artifact Projection (SOAP).
+
+    Projects feature embeddings to suppress artifact directions identified
+    by semantic invariance scoring across real and synthetic data distributions.
+    """
 
     def __init__(self, projector:Tensor|None=None):
         super().__init__()
@@ -162,7 +167,7 @@ class SemanticInvarianceProjector(nn.Module):
     @classmethod
     def compute_from_scores(
         cls, scores:Tensor, cov_data:WelfordChanEstimator|Tensor, clamp_eps:float=1e-12
-    ) -> "SemanticInvarianceProjector":
+    ) -> "SOAP":
         projector = semantic_invariance_projector_from_scores(scores, cov_data, clamp_eps)
         return cls(projector)
 
@@ -171,7 +176,7 @@ class SemanticInvarianceProjector(nn.Module):
         cls, p_data:Tensor, p_synth:Tensor, cov_data:WelfordChanEstimator|Tensor,
         dims:list[int]=[0, 1], clamp_eps:float=1e-12, alpha:float=1.0, mu:float = 2.0, tau:float=0.05,
         score_version:Literal['scores', 'scaled']='scaled'
-    ) -> "SemanticInvarianceProjector":
+    ) -> "SOAP":
         if score_version == 'scores': 
             semantic_invariance_score = semantic_invariance_score
         elif score_version == 'scaled': 
@@ -185,7 +190,7 @@ class SemanticInvarianceProjector(nn.Module):
     @classmethod
     def from_precomputed(
         cls, path_response_data:str, path_response_synth:str, path_estimator_data:str, **kwargs
-    ) -> "SemanticInvarianceProjector":
+    ) -> "SOAP":
         e = WelfordChanEstimator.deserialize(path_estimator_data)
         p_data = torch.load(path_response_data, map_location=torch.device('cpu')).clamp(1e-12,1-1e-12)
         p_synth = torch.load(path_response_synth, map_location=torch.device('cpu')).clamp(1e-12,1-1e-12)
@@ -193,7 +198,7 @@ class SemanticInvarianceProjector(nn.Module):
     
     @classmethod
     def from_modelname(cls, modelname:str, path:str, binary:bool=True, **kwargs
-    ) -> "SemanticInvarianceProjector":
+    ) -> "SOAP":
         if binary:
             path_response_data = os.path.join(path, f"{modelname}_agg_patch_responses.pth")
             path_response_synth = os.path.join(path, f"{modelname}_agg_patch_responses_synth.pth")
@@ -205,14 +210,14 @@ class SemanticInvarianceProjector(nn.Module):
             path_response_data, path_response_synth, path_estimator_data, **kwargs)
 
     @classmethod
-    def deserialize(cls, path:str) -> "SemanticInvarianceProjector":
+    def deserialize(cls, path:str) -> "SOAP":
         projector = torch.load(path, map_location=torch.device('cpu'))
         return cls(projector)
     
     @classmethod
     def manual_truncation(
         cls, cov_data:WelfordChanEstimator|Tensor, trunc_indices:list[int],
-    ) -> "SemanticInvarianceProjector":
+    ) -> "SOAP":
         """ Manually select which principal components to supress. Used in testing.
         """
         projector = truncated_invariance_projector(cov_data, trunc_indices)

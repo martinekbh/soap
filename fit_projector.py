@@ -6,15 +6,13 @@ import torch.nn as nn
 from torch.utils.data import ConcatDataset
 
 from get_models import get_dense_backbone
-import get_models
-from soap.soap import SemanticInvarianceProjector
-from soap.welford import WelfordChanEstimator
-from synth.dataset import SynthesizedDataSet 
+from soap import SOAP, WelfordChanEstimator
+from soap.synth import SynthesizedDataSet
 from types import MethodType
 
 
 def get_data(dataset, datafolder, imgproc):
-    data = ... # Load Dataset e.g. ImageNet
+    data = ... # Load Dataset e.g. ImageNet. Remember to apply normalization.
     return data
 
 def fit_WCE(model, dataloader, modelname, device, forward_fn='forward', num_global_tokens:int=0, patch_indices=None, dump_dir='weights'):
@@ -75,7 +73,7 @@ def fit_projector(model, cov_data:WelfordChanEstimator, dataloader, dataloader_s
 
     # Calculate projection
     wce_file = os.path.join(dump_dir, f'{modelname}_cov.pth')
-    projector = SemanticInvarianceProjector.from_precomputed(
+    projector = SOAP.from_precomputed(
         responses_real,
         responses_synth,
         wce_file

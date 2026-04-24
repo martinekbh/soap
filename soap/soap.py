@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from .welford import WelfordChanEstimator
-from torch.utils.data import DataLoader
 from typing import Literal, Callable
 from functools import partial
 
@@ -14,14 +13,14 @@ def _get_cov(est: WelfordChanEstimator | Tensor) -> Tensor:
     return est
 
 
-def _max_scaler(x:Tensor, eps:float) -> Tensor:
-    mx = x.max()
-    return x / mx.clamp(min=eps)
+# def _max_scaler(x:Tensor, eps:float) -> Tensor:
+#     mx = x.max()
+#     return x / mx.clamp(min=eps)
 
 
-def _minmax_scaler(x:Tensor, eps:float=1e-12) -> Tensor:
-    mx, mn = x.max(), x.min()
-    return (x - mn) / (mx - mn).clamp(min=eps)
+# def _minmax_scaler(x:Tensor, eps:float=1e-12) -> Tensor:
+#     mx, mn = x.max(), x.min()
+#     return (x - mn) / (mx - mn).clamp(min=eps)
 
 
 def entropy(prob:Tensor, dims:list[int]=[0,1], clamp_eps:float=1e-12) -> Tensor:
@@ -77,18 +76,25 @@ def semantic_invariance_score(
     return cs
 
 def semantic_invariance_score_transform(
-    p_data:Tensor, p_synth:Tensor, 
+    p_data:Tensor, p_synth:Tensor,
     dims:list[int]=[0,1], clamp_eps:float=1e-12, alpha:float=1.0,
-    mu:float = 1.5, tau:float=0.2,
+    mu:float|None = 1.5, tau:float=0.2, threshold:float=0.75,
+    capture:dict|None=None,
 ) -> Tensor:
-    embed_dim = p_data.size(-1)
-
     # Calculate scores
     scores = semantic_invariance_score(p_data, p_synth, dims, clamp_eps, alpha)
 
+    if mu is None:
+        mu = (scores > threshold).sum().item()
+        if capture is not None:
+            capture['mu'] = mu
+
+    if mu <= 0:
+        return torch.zeros_like(scores)
+
     # Sort and transform (ScoreTransform expects sorted scores)
     with torch.no_grad():
-        t = ScoreTransform(mu=mu, tau=tau, dim=embed_dim)
+        t = ScoreTransform(mu=mu, tau=tau)
         sorted_scores, sorted_idx = torch.sort(scores, descending=True)
         scores = t(sorted_scores)
 
@@ -245,15 +251,14 @@ def locscale_sigmoid(x, m, t):
 
 class ScoreTransform(nn.Module):
 
-    def __init__(self, mu:float=2.5, tau:float=1., dim=768):
+    def __init__(self, mu:float=2.5, tau:float=0.2):
         super().__init__()
-        self._mu = nn.Parameter(sigmoid_inv(mu / dim))
-        self._tau = nn.Parameter(softplus_inv(tau / dim))
-        self.dim = dim
+        self._mu = nn.Parameter(softplus_inv(mu))
+        self._tau = nn.Parameter(softplus_inv(tau))
 
     @property
     def mu(self):
-        return self._mu.sigmoid()
+        return F.softplus(self._mu)
 
     @property
     def tau(self):
@@ -261,27 +266,6 @@ class ScoreTransform(nn.Module):
 
     def forward(self, sorted_scores):
         s = sorted_scores
-        r = torch.arange(len(s), device=s.device) / self.dim
-        flter = locscale_sigmoid(r, self.mu, self.tau)
+        r = torch.arange(len(s), device=s.device, dtype=s.dtype)
+        flter = torch.sigmoid((self.mu - 0.5 - r) / self.tau)
         return flter * s
-
-
-# def trace_estimator(
-#     cov_synth:WelfordChanEstimator|Tensor, cov_data:WelfordChanEstimator|Tensor, symmetric:bool=True
-# ) -> float:
-#     '''Estimates E[`theta_rho`] using the trace estimator.
-
-#     Parameters:
-#         cov_synth: The synthetic covariance matrix.
-#         cov_data: The real data covariance matrix.
-#         symmetric: Whether to use symmetric Rayleigh.
-
-#     Returns:
-#         The estimated value of E[`theta_rho`].
-#     '''
-#     cov1 = _get_cov(cov_synth)
-#     cov2 = _get_cov(cov_data)
-#     if symmetric: 
-#         return torch.trace(cov1).item() / torch.trace(cov1 + cov2).item()
-#     else:
-#         return torch.trace(cov1).item()  / torch.trace(cov2).item()

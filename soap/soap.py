@@ -72,7 +72,7 @@ def semantic_invariance_score(
     p_data:Tensor, p_synth:Tensor,  
     dims:list[int]=[0,1], clamp_eps:float=1e-12, alpha:float=1.0
 ) -> Tensor:
-    cs = semantic_invariance(p_data, p_synth, gamma=alpha).mean(dims).flip(-1)
+    cs = semantic_invariance(p_data, p_synth, gamma=alpha).mean(dims)
     return cs
 
 def semantic_invariance_score_transform(
@@ -101,7 +101,7 @@ def semantic_invariance_score_transform(
         # Revert back to original order
         inv_idx = torch.argsort(sorted_idx)
         scores = scores[inv_idx]
-    return scores.flip(-1)
+    return scores
 
 
 def semantic_invariance_projector_from_scores(
@@ -118,7 +118,7 @@ def semantic_invariance_projector_from_scores(
 
 def semantic_invariance_projector(
     p_data:Tensor, p_synth:Tensor, cov_data:WelfordChanEstimator|Tensor,
-    dims:list[int]=[0,1], clamp_eps:float=1e-12, alpha:float=5,
+    dims:list[int]=[0,1], clamp_eps:float=1e-12, alpha:float=1.0,
     semantic_invariance_score:Callable=semantic_invariance_score
 ) -> Tensor:
     scores = semantic_invariance_score(

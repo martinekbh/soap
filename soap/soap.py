@@ -72,7 +72,7 @@ def semantic_invariance_score(
     p_data:Tensor, p_synth:Tensor,  
     dims:list[int]=[0,1], clamp_eps:float=1e-12, alpha:float=1.0
 ) -> Tensor:
-    cs = semantic_invariance(p_data, p_synth, gamma=alpha).mean(dims)
+    cs = semantic_invariance(p_data, p_synth, gamma=alpha).mean(dims).flip(-1)
     return cs
 
 def semantic_invariance_score_transform(
